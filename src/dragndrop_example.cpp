@@ -129,7 +129,6 @@ struct MyWindow::Impl {
 
 		if (hasChildren) {
 			if (ImGui::SmallButton(isOpened ? ICON_FA_CARET_DOWN : ICON_FA_CARET_RIGHT)) {
-				//treeEditor.expandItem(node, !isOpened);
 				isOpened = !isOpened;
 				node->expanded = isOpened;
 			}
@@ -142,64 +141,12 @@ struct MyWindow::Impl {
 		ImGui::TextUnformatted(std::data(icon), std::next(std::data(icon), std::size(icon)));
 		ImGui::SameLine();
 
-	//	if (treeEditor.applyFocus(node)) {
-	//		ImGui::SetScrollHereY();
-	//	}
 		if (ImGui::Selectable(node->name.c_str(), isSelected, 0)) {
-			//treeEditor.selectItem(node);
 			selected = node;
 		}
-		if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal)) {
-			if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
-				//treeEditor.doubleClickedItem(node);
-			}
-			//if (auto ti = rttr::type::get(*node); ti.is_valid()) {
-			//	ImGui::BeginTooltip();
-			//	ImGui::TextUnformatted(std::data(ti.get_name()));
-			//	ImGui::EndTooltip();
-			//}
-		}
-	//	if (ImGui::BeginPopupContextItem()) {
-	//		treeEditor.selectItem(node);
-	//		auto clipboard = core::getEditor()->getClipboard();
-	//		if (ImGui::MenuItem("Cut", "Ctrl+X")) {
-	//			cmdCut();
-	//			ImGui::CloseCurrentPopup();
-	//		}
-	//		if (ImGui::MenuItem("Copy", "Ctrl+C")) {
-	//			cmdCopy();
-	//			ImGui::CloseCurrentPopup();
-	//		}
-	//		if (ImGui::MenuItem("Paste", "Ctrl+V", nullptr, clipboard->hasNode())) {
-	//			cmdPaste();
-	//			ImGui::CloseCurrentPopup();
-	//		}
-	//		if (ImGui::MenuItem("Export")) {
-	//			auto json = MESceneSerializerJson::instance()->serializeNode(node);
-	//			auto assetsDir = core::Editor::instance()->getProject()->getAssetsDir();
-	//			std::string name = node->getName() + ".json";
-	//			std::string err;
-	//			if (!core::utils::json::write(assetsDir / "generic" / "nodes" / name, json, &err)) {
-	//				MGF_LOG_ERROR("Export: failed to save node");
-	//			}
-	//		}
-	//		ImGui::Separator();
-	//		if (ImGui::BeginMenu("Add")) {
-	//			imguiShowNodeMenu();
-	//			ImGui::EndMenu();
-	//		}
-	//		if (ImGui::MenuItem("Remove", "Del")) {
-	//			cmdRemove();
-	//			ImGui::CloseCurrentPopup();
-	//		}
-	//		ImGui::EndPopup();
-	//	}
 		if (node->parent) {
 			if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_None)) {
 				dragged = node;
-			//	treeEditor.beginDrag(node);
-			//	document->deselectAllNodes();
-			//	document->selectNode(node);
 				ImGui::SetDragDropPayload("SceneExplorer", nullptr, 0);
 				ImGui::Text("%s", node->name.c_str());
 				ImGui::EndDragDropSource();
@@ -210,15 +157,12 @@ struct MyWindow::Impl {
 			if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("SceneExplorer")) {
 				if (auto nd = dragged; nd) {
 					if (canDropNode(node, nd)) {
-					//	auto cmdProc = core::getCommandProcessor();
-					//	cmdProc->post(std::make_unique<InsertNodeCommand>(nd, node));
 						TaskController::addFunc([nd, node]() {
 							if (auto p = nd->parent; p)
 								p->removeChild(nd);
 							node->addChild(nd);
 						});
 					}
-					//treeEditor.endDrag();
 					dragged = nullptr;
 				}
 			}
