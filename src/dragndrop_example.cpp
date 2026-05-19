@@ -233,6 +233,7 @@ MyWindow::MyWindow() : d(new Impl()) {
 }
 
 MyWindow::~MyWindow() {
+	delete d->rootNode;
 	delete d;
 }
 
