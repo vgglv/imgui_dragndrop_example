@@ -2,6 +2,7 @@
 #include "imgui.h"
 #include "imgui_internal.h"
 #include "tasks.hpp"
+#include <algorithm>
 #include <vector>
 #include <list>
 #include "icons.hpp"
@@ -26,7 +27,7 @@ public:
 	}
 
 	void removeChild(Node* node) {
-		auto it = std::find(children.begin(), children.end(), node);
+		auto it = std::ranges::find(children, node);
 		if (it != children.end()) {
 			children.erase(it);
 		}
@@ -210,9 +211,9 @@ struct MyWindow::Impl {
 					//	auto cmdProc = core::getCommandProcessor();
 					//	cmdProc->post(std::make_unique<InsertNodeCommand>(nd, node));
 						TaskController::addFunc([nd, node]() {
-							if (auto p = node->parent; p)
-								p->removeChild(node);
-							nd->insertChild(-1, nd);
+							if (auto p = nd->parent; p)
+								p->removeChild(nd);
+							node->addChild(nd);
 						});
 					}
 					//treeEditor.endDrag();
