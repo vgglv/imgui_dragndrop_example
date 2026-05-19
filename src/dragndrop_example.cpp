@@ -64,6 +64,7 @@ public:
 	std::string name;
 	Node* parent = nullptr;
 	std::list<Node*> children;
+	bool expanded = false;
 };
 
 struct MyWindow::Impl {
@@ -101,6 +102,7 @@ struct MyWindow::Impl {
 
 		const bool isSelected = isItemSelected(node);
 		const bool hasChildren = !node->children.empty();
+		bool isOpened = node->expanded;
 
 		if (ImGui::IsDragDropActive() && node->parent) {
 			ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0.0f, 0.0f));
@@ -126,10 +128,10 @@ struct MyWindow::Impl {
 		}
 
 		if (hasChildren) {
-			bool isOpened = false;
 			if (ImGui::SmallButton(isOpened ? ICON_FA_CARET_DOWN : ICON_FA_CARET_RIGHT)) {
 				//treeEditor.expandItem(node, !isOpened);
 				isOpened = !isOpened;
+				node->expanded = isOpened;
 			}
 			ImGui::SameLine();
 		} else {
@@ -238,11 +240,13 @@ struct MyWindow::Impl {
 			}
 		}
 
-		ImGui::TreePush(node);
-		for (auto& nd : node->children) {
-			imguiShowTree(nd);
+		if (isOpened) {
+			ImGui::TreePush(node);
+			for (auto& nd : node->children) {
+				imguiShowTree(nd);
+			}
+			ImGui::TreePop();
 		}
-		ImGui::TreePop();
 
 		ImGui::PopID();
 	}
