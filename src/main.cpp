@@ -31,6 +31,8 @@
 
 #include "dragndrop_example.hpp"
 #include "tasks.hpp"
+#include "fa-solid-900.ttf.hpp"
+#include "icons.hpp"
 
 static void glfw_error_callback(int error, const char* description)
 {
@@ -127,6 +129,16 @@ int main(int, char**) {
 	bool show_another_window = false;
 	ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 	MyWindow myWindow;
+
+	io.Fonts->AddFontDefault();
+	static const ImWchar icons_ranges[] = {ICON_MIN_FA, ICON_MAX_FA, 0};
+	ImFontConfig fc;
+	fc.MergeMode = true;
+	fc.GlyphMinAdvanceX = 13.f;
+	fc.GlyphOffset.y = 1.0f;
+	fc.GlyphRanges = icons_ranges;
+	fc.SizePixels = 13.f;
+	io.Fonts->AddFontFromMemoryCompressedTTF(fa_solid_900_compressed_data, fa_solid_900_compressed_size, fc.SizePixels, &fc, fc.GlyphRanges);
 
 	// Main loop
 #ifdef __EMSCRIPTEN__
