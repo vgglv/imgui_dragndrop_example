@@ -7,70 +7,12 @@
 #include <list>
 #include "icons.hpp"
 #include <string_view>
-
-class Node {
-public:
-	Node() = default;
-	~Node() {
-		for (auto node : children) {
-			delete node;
-		}
-		children.clear();
-	}
-
-	int getIndexOfChild(Node* nd) const {
-		auto it = std::find(children.begin(), children.end(), nd);
-		if (it != children.end()) {
-			return std::distance(children.begin(), it);
-		}
-		return -1;
-	}
-
-	void removeChild(Node* node) {
-		auto it = std::ranges::find(children, node);
-		if (it != children.end()) {
-			children.erase(it);
-		}
-	}
-
-	void insertChild(int index, Node* nd) {
-		if (auto p = nd->parent) {
-			p->removeChild(nd);
-		}
-
-		nd->parent = this;
-
-		if (children.empty()) {
-			children.push_back(nd);
-		} else if (index >= 0) {
-			if (static_cast<size_t>(index) < children.size()) {
-				children.emplace(std::next(children.begin(), index), nd);
-			} else {
-				children.push_back(nd);
-			}
-		} else {
-			if (static_cast<size_t>(-index - 1) < children.size()) {
-				children.emplace(std::prev(children.end(), -index - 1), nd);
-			} else {
-				children.push_front(nd);
-			}
-		}
-	}
-	void addChild(Node* node) {
-		children.emplace_back(node);
-		node->parent = this;
-	}
-
-	std::string name;
-	Node* parent = nullptr;
-	std::list<Node*> children;
-	bool expanded = false;
-};
+#include "Node.hpp"
 
 struct MyWindow::Impl {
-	Node* selected = nullptr;
-	Node* dragged = nullptr;
-	Node* dropTarget = nullptr;
+	nodes::Node* selected = nullptr;
+	nodes::Node* dragged = nullptr;
+	nodes::Node* dropTarget = nullptr;
 
 	enum class DropType {
 		None,
@@ -80,22 +22,22 @@ struct MyWindow::Impl {
 	};
 	DropType dropType = DropType::None;
 
-	std::string_view getIcon(Node* node) noexcept {
+	std::string_view getIcon(nodes::Node* node) noexcept {
 		return ICON_FA_CUBE;
 	}
 
-	bool isItemSelected(Node* node) {
+	bool isItemSelected(nodes::Node* node) {
 		return selected == node;
 	}
 
-	bool isChildOf(const Node* target, const Node* parent) const {
+	bool isChildOf(const nodes::Node* target, const nodes::Node* parent) const {
 		bool result = false;
-		for (const Node* child : parent->children) {
-			if (target == child) {
+		for (const auto& child : parent->children()) {
+			if (target->uid() == child->uid()) {
 				result = true;
 				break;
 			}
-			result = isChildOf(target, child);
+			result = isChildOf(target, child.get());
 			if (result) {
 				break;
 			}
@@ -103,25 +45,25 @@ struct MyWindow::Impl {
 		return result;
 	}
 
-	bool isChildOfAnySelectedNode(const Node* child) const {
+	bool isChildOfAnySelectedNode(const nodes::Node* child) const {
 		if (!child) {
 			return false;
 		}
 		return isChildOf(child, selected);
 	}
 
-	bool canDropNode(Node* parent, Node* target) {
-		Node* p = parent;
+	bool canDropNode(nodes::Node* parent, nodes::Node* target) {
+		nodes::Node* p = parent;
 		while (p) {
 			if (p == target) {
 				return false;
 			}
-			p = p->parent;
+			p = p->parent();
 		}
 		return true;
 	}
 
-	void imguiShowTree(Node* node) {
+	void imguiShowTree(nodes::Node* node) {
 		if (!node) {
 			return;
 		}
@@ -132,13 +74,13 @@ struct MyWindow::Impl {
 		ImGui::TableNextColumn();
 
 		const bool isSelected = isItemSelected(node);
-		const bool hasChildren = !node->children.empty();
-		bool isOpened = node->expanded;
+		const bool hasChildren = !node->empty();
+		bool isOpened = node->expanded();
 
 		if (hasChildren) {
 			if (ImGui::SmallButton(isOpened ? ICON_FA_CARET_DOWN : ICON_FA_CARET_RIGHT)) {
 				isOpened = !isOpened;
-				node->expanded = isOpened;
+				node->_expanded = isOpened;
 			}
 			ImGui::SameLine();
 		} else {
@@ -149,7 +91,7 @@ struct MyWindow::Impl {
 		ImGui::TextUnformatted(std::data(icon), std::next(std::data(icon), std::size(icon)));
 		ImGui::SameLine();
 
-		ImGui::Selectable(node->name.c_str(), isSelected, 0);
+		ImGui::Selectable(node->name_c(), isSelected, 0);
 
 		if (ImGui::IsItemActivated()) {
 			dragged = node;
@@ -205,21 +147,18 @@ struct MyWindow::Impl {
 			}
 			if (dragged && dropTarget && dragged != dropTarget && !isAnyChildOfSelected) {
 				TaskController::addFunc([dragged = dragged, dropType = dropType, dropTarget = dropTarget]() {
-					if (auto p = dragged->parent)
-						p->removeChild(dragged);
-
 					if (dropType == DropType::Into) {
-						dropTarget->addChild(dragged);
+						dropTarget->addChild(dragged->release());
 					}
 					else {
-						Node* parent = dropTarget->parent;
+						auto parent = dropTarget->_parent;
 						if (!parent) return;
 
-						int index = parent->getIndexOfChild(dropTarget);
+						int index = parent->getIndexOfChild(dropTarget->uid());
 						if (dropType == DropType::After)
 							index++;
 
-						parent->insertChild(index, dragged);
+						parent->insertChild(index, dragged->release());
 					}
 				});
 			}
@@ -245,8 +184,8 @@ struct MyWindow::Impl {
 
 		if (isOpened) {
 			ImGui::TreePush(node);
-			for (auto& nd : node->children) {
-				imguiShowTree(nd);
+			for (const auto& node : node->children()) {
+				imguiShowTree(node.get());
 			}
 			ImGui::TreePop();
 		}
@@ -261,39 +200,35 @@ struct MyWindow::Impl {
 		if (ImGui::BeginTable("##SceneObjects", 2, flags)) {
 			ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthStretch);
 			ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthFixed);
-			imguiShowTree(rootNode);
+			imguiShowTree(rootNode.get());
 			ImGui::EndTable();
 		}
 		ImGui::EndChild();
 	}
 
-	Node* rootNode = nullptr;
+	nodes::NodePtr rootNode = nullptr;
 };
 
 MyWindow::MyWindow() : d(new Impl()) {
-	d->rootNode = new Node();
-	d->rootNode->name = "Root";
+	using namespace nodes;
+	d->rootNode = Node::create("Root");
 
 	Node* last_item = nullptr;
 	for (int i = 0; i < 10; i++) {
-		auto child = new Node();
-		child->name = std::string{"child"} + std::to_string(i);
-		d->rootNode->addChild(child);
-		last_item = child;
+		auto child = Node::create(std::string{"child"} + std::to_string(i));
+		last_item = child.get();
+		d->rootNode->addChild(std::move(child));
 	}
 
 	for (int i = 0; i < 10; i++) {
-		auto child = new Node();
-		child->name = std::string{"nested_child"} + std::to_string(i);
-
-		last_item->addChild(child);
-		last_item = child;
+		auto child = Node::create(std::string{"nested_child"} + std::to_string(i));
+		auto temp = child.get();
+		last_item->addChild(std::move(child));
+		last_item = temp;
 	}
 }
 
 MyWindow::~MyWindow() {
-	delete d->rootNode;
-	delete d;
 }
 
 void MyWindow::draw() {
