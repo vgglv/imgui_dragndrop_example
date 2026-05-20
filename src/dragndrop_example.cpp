@@ -229,6 +229,7 @@ MyWindow::MyWindow() : d(new Impl()) {
 }
 
 MyWindow::~MyWindow() {
+	delete d;
 }
 
 void MyWindow::draw() {
