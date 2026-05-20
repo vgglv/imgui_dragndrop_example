@@ -88,6 +88,28 @@ struct MyWindow::Impl {
 		return selected == node;
 	}
 
+	bool isChildOf(const Node* target, const Node* parent) const {
+		bool result = false;
+		for (const Node* child : parent->children) {
+			if (target == child) {
+				result = true;
+				break;
+			}
+			result = isChildOf(target, child);
+			if (result) {
+				break;
+			}
+		}
+		return result;
+	}
+
+	bool isChildOfAnySelectedNode(const Node* child) const {
+		if (!child) {
+			return false;
+		}
+		return isChildOf(child, selected);
+	}
+
 	bool canDropNode(Node* parent, Node* target) {
 		Node* p = parent;
 		while (p) {
@@ -127,12 +149,11 @@ struct MyWindow::Impl {
 		ImGui::TextUnformatted(std::data(icon), std::next(std::data(icon), std::size(icon)));
 		ImGui::SameLine();
 
-		if (ImGui::Selectable(node->name.c_str(), isSelected, 0)) {
-			selected = node;
-		}
+		ImGui::Selectable(node->name.c_str(), isSelected, 0);
 
 		if (ImGui::IsItemActivated()) {
 			dragged = node;
+			selected = node;
 		}
 
 		ImRect rect(ImGui::GetItemRectMin(), ImGui::GetItemRectMax());
@@ -178,7 +199,11 @@ struct MyWindow::Impl {
 		}
 
 		if (ImGui::IsMouseReleased(0)) {
-			if (dragged && dropTarget && dragged != dropTarget) {
+			bool isAnyChildOfSelected = isChildOfAnySelectedNode(dropTarget);
+			if (!isAnyChildOfSelected) {
+				printf("[Error] cannot put parent into child\n");
+			}
+			if (dragged && dropTarget && dragged != dropTarget && !isAnyChildOfSelected) {
 				TaskController::addFunc([dragged = dragged, dropType = dropType, dropTarget = dropTarget]() {
 					if (auto p = dragged->parent)
 						p->removeChild(dragged);
@@ -197,10 +222,10 @@ struct MyWindow::Impl {
 						parent->insertChild(index, dragged);
 					}
 				});
-				dragged = nullptr;
-				dropTarget = nullptr;
-				dropType = DropType::None;
 			}
+			dragged = nullptr;
+			dropTarget = nullptr;
+			dropType = DropType::None;
 		}
 
 		ImGui::TableNextColumn();
