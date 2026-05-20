@@ -11,7 +11,7 @@ namespace nodes {
 
 	int Node::getIndexOfChild(NodeId uid) const {
 		auto it = std::ranges::find_if(_children, [uid](const NodePtr& n) {
-			return uid == n->_uid;
+			return uid == n->uid();
 		});
 		if (it != _children.end()) {
 			return std::distance(_children.begin(), it);

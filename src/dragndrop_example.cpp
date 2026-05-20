@@ -2,7 +2,6 @@
 #include "imgui.h"
 #include "imgui_internal.h"
 #include "tasks.hpp"
-#include <algorithm>
 #include <vector>
 #include <list>
 #include "icons.hpp"
@@ -149,16 +148,18 @@ struct MyWindow::Impl {
 				TaskController::addFunc([dragged = dragged, dropType = dropType, dropTarget = dropTarget]() {
 					if (dropType == DropType::Into) {
 						dropTarget->addChild(dragged->release());
-					}
-					else {
+						dropTarget->_expanded = true;
+					} else {
 						auto parent = dropTarget->_parent;
 						if (!parent) return;
+
+						auto released_dragged = dragged->release();
 
 						int index = parent->getIndexOfChild(dropTarget->uid());
 						if (dropType == DropType::After)
 							index++;
 
-						parent->insertChild(index, dragged->release());
+						parent->insertChild(index, std::move(released_dragged));
 					}
 				});
 			}
