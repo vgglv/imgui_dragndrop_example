@@ -70,6 +70,15 @@ public:
 struct MyWindow::Impl {
 	Node* selected = nullptr;
 	Node* dragged = nullptr;
+	Node* dropTarget = nullptr;
+
+	enum class DropType {
+		None,
+		Before,
+		Into,
+		After
+	};
+	DropType dropType = DropType::None;
 
 	std::string_view getIcon(Node* node) noexcept {
 		return ICON_FA_CUBE;
@@ -104,29 +113,6 @@ struct MyWindow::Impl {
 		const bool hasChildren = !node->children.empty();
 		bool isOpened = node->expanded;
 
-		if (ImGui::IsDragDropActive() && node->parent) {
-			ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0.0f, 0.0f));
-			ImGui::InvisibleButton("##drop_area", ImVec2(-1, 6.f));
-			ImGui::PopStyleVar();
-			if (ImGui::BeginDragDropTarget()) {
-				if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("SceneExplorer")) {
-					if (auto nd = dragged; nd) {
-						if (auto parent = node->parent; parent) {
-							if (canDropNode(parent, nd)) {
-								auto index = parent->getIndexOfChild(node);
-								TaskController::addFunc([nd, parent, index]() {
-									if (auto p = nd->parent; p)
-										p->removeChild(nd);
-									parent->insertChild(index, nd);
-								});
-							}
-						}
-					}
-				}
-				ImGui::EndDragDropTarget();
-			}
-		}
-
 		if (hasChildren) {
 			if (ImGui::SmallButton(isOpened ? ICON_FA_CARET_DOWN : ICON_FA_CARET_RIGHT)) {
 				isOpened = !isOpened;
@@ -144,29 +130,77 @@ struct MyWindow::Impl {
 		if (ImGui::Selectable(node->name.c_str(), isSelected, 0)) {
 			selected = node;
 		}
-		if (node->parent) {
-			if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_None)) {
-				dragged = node;
-				ImGui::SetDragDropPayload("SceneExplorer", nullptr, 0);
-				ImGui::Text("%s", node->name.c_str());
-				ImGui::EndDragDropSource();
+
+		if (ImGui::IsItemActivated()) {
+			dragged = node;
+		}
+
+		ImRect rect(ImGui::GetItemRectMin(), ImGui::GetItemRectMax());
+		if (dragged && dragged != node && ImGui::IsMouseDown(0)) {
+			ImVec2 mouse = ImGui::GetIO().MousePos;
+
+			if (rect.Contains(mouse)) {
+				float h = rect.GetHeight();
+				float top = rect.Min.y + h * 0.25f;
+				float bottom = rect.Max.y - h * 0.25f;
+
+				dropTarget = node;
+
+				if (mouse.y < top)
+					dropType = DropType::Before;
+				else if (mouse.y > bottom)
+					dropType = DropType::After;
+				else
+					dropType = DropType::Into;
 			}
 		}
 
-		if (ImGui::BeginDragDropTarget()) {
-			if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("SceneExplorer")) {
-				if (auto nd = dragged; nd) {
-					if (canDropNode(node, nd)) {
-						TaskController::addFunc([nd, node]() {
-							if (auto p = nd->parent; p)
-								p->removeChild(nd);
-							node->addChild(nd);
-						});
-					}
-					dragged = nullptr;
-				}
+		if (dropTarget == node) {
+			ImDrawList* dl = ImGui::GetWindowDrawList();
+
+			if (dropType == DropType::Before) {
+				dl->AddLine(
+					{rect.Min.x, rect.Min.y},
+					{rect.Max.x, rect.Min.y},
+					IM_COL32(80,200,255,255), 2.f);
 			}
-			ImGui::EndDragDropTarget();
+			else if (dropType == DropType::After) {
+				dl->AddLine(
+					{rect.Min.x, rect.Max.y},
+					{rect.Max.x, rect.Max.y},
+					IM_COL32(80,200,255,255), 2.f);
+			}
+			else if (dropType == DropType::Into) {
+				dl->AddRect(
+					rect.Min, rect.Max,
+					IM_COL32(80,200,255,255), 0.f, 0, 2.f);
+			}
+		}
+
+		if (ImGui::IsMouseReleased(0)) {
+			if (dragged && dropTarget && dragged != dropTarget) {
+				TaskController::addFunc([dragged = dragged, dropType = dropType, dropTarget = dropTarget]() {
+					if (auto p = dragged->parent)
+						p->removeChild(dragged);
+
+					if (dropType == DropType::Into) {
+						dropTarget->addChild(dragged);
+					}
+					else {
+						Node* parent = dropTarget->parent;
+						if (!parent) return;
+
+						int index = parent->getIndexOfChild(dropTarget);
+						if (dropType == DropType::After)
+							index++;
+
+						parent->insertChild(index, dragged);
+					}
+				});
+				dragged = nullptr;
+				dropTarget = nullptr;
+				dropType = DropType::None;
+			}
 		}
 
 		ImGui::TableNextColumn();
