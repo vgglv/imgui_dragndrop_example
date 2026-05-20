@@ -20,7 +20,7 @@
 #include "../libs/emscripten/emscripten_mainloop_stub.h"
 #endif
 
-#include "dragndrop_example.hpp"
+#include "ImGuiTreeEditor.hpp"
 #include "tasks.hpp"
 #include "fa-solid-900.ttf.hpp"
 #include "icons.hpp"
@@ -98,7 +98,7 @@ int main(int, char**) {
 	bool show_demo_window = false;
 	bool show_another_window = false;
 	ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
-	MyWindow myWindow;
+	ImGuiTreeEditor myWindow;
 
 	io.Fonts->AddFontDefault();
 	static const ImWchar icons_ranges[] = {ICON_MIN_FA, ICON_MAX_FA, 0};

@@ -1,4 +1,4 @@
-#include "dragndrop_example.hpp"
+#include "ImGuiTreeEditor.hpp"
 #include "imgui.h"
 #include "imgui_internal.h"
 #include "tasks.hpp"
@@ -8,7 +8,7 @@
 #include <string_view>
 #include "Node.hpp"
 
-struct MyWindow::Impl {
+struct ImGuiTreeEditor::Impl {
 	nodes::Node* selected = nullptr;
 	nodes::Node* dragged = nullptr;
 	nodes::Node* dropTarget = nullptr;
@@ -210,7 +210,7 @@ struct MyWindow::Impl {
 	nodes::NodePtr rootNode = nullptr;
 };
 
-MyWindow::MyWindow() : d(new Impl()) {
+ImGuiTreeEditor::ImGuiTreeEditor() : d(new Impl()) {
 	using namespace nodes;
 	d->rootNode = Node::create("Root");
 
@@ -229,11 +229,11 @@ MyWindow::MyWindow() : d(new Impl()) {
 	}
 }
 
-MyWindow::~MyWindow() {
+ImGuiTreeEditor::~ImGuiTreeEditor() {
 	delete d;
 }
 
-void MyWindow::draw() {
+void ImGuiTreeEditor::draw() {
 	bool isOpen = ImGui::Begin("MyWindow");
 	if (!isOpen) {
 		return;

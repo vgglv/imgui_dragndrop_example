@@ -1,9 +1,9 @@
 #pragma once
 
-class MyWindow {
+class ImGuiTreeEditor {
 public:
-	MyWindow();
-	~MyWindow();
+	ImGuiTreeEditor();
+	~ImGuiTreeEditor();
 
 	void draw();
 private:
